@@ -1,0 +1,12 @@
+# Compilación
+dist/
+build/
+*.spec
+__pycache__/
+*.pyc
+
+# Herramientas de terceros: construir.py las descarga
+vendor/
+
+# Ejecutables (se publican en Releases, no en el código)
+*.exe
