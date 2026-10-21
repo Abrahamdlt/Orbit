@@ -13,7 +13,9 @@ import time
 
 from ... import rutas, sistema
 
-VENTANA_FPS = 1.0  # segundos de cuadros que se promedian
+# Segundos de cuadros que se promedian y cada cuánto se envía una lectura (normal / baja latencia)
+VENTANA_FPS = {False: 1.0, True: 0.4}
+ENVIO = {False: 0.5, True: 0.25}
 
 
 class Fps:
@@ -59,7 +61,7 @@ class Fps:
                 self.nombres[pid] = partes[i_app]
         logging.info("PresentMon terminó (código %s)", self.proceso.poll())
 
-    def de(self, pid):
+    def de(self, pid, ventana=VENTANA_FPS[False]):
         """FPS del proceso, o None si no está dibujando nada."""
         ahora, mejor = time.monotonic(), None
         with self.bloqueo:
@@ -70,7 +72,7 @@ class Fps:
                 for _, ms in reversed(cola):
                     total += ms
                     cuenta += 1
-                    if total >= VENTANA_FPS * 1000:
+                    if total >= ventana * 1000:
                         break
                 fps = cuenta * 1000 / total
                 mejor = fps if mejor is None else max(mejor, fps)
@@ -87,8 +89,10 @@ class Temperaturas:
     def __init__(self):
         self.datos = {}
         self.computadora = None
+        self.iniciado = False
 
     def arrancar(self):
+        self.iniciado = True
         threading.Thread(target=self._bucle, daemon=True).start()
 
     def _bucle(self):
@@ -146,19 +150,33 @@ def correr():
         fps.arrancar()
     except OSError:
         logging.exception("No se pudo abrir PresentMon")
-    temperaturas.arrancar()
 
-    ultimo_aviso = time.monotonic()
+    pedido = {"t": True, "r": False}  # lo que Orbit necesita: temperaturas y baja latencia
+    ultimo_aviso = ultimo_envio = time.monotonic()
     try:
         while time.monotonic() - ultimo_aviso < 6:  # Orbit avisa cada segundo que sigue abierta
             try:
-                entrada.recv(64)
+                paquete = entrada.recv(256)
                 ultimo_aviso = time.monotonic()
+                try:
+                    pedido.update(json.loads(paquete))
+                except ValueError:
+                    pass  # aviso simple de una versión anterior
             except socket.timeout:
                 pass
-            pid = sistema.pid_en_primer_plano()
-            lectura = dict(temperaturas.datos, fps=fps.de(pid), app=fps.nombres.get(pid, ""))
-            salida.sendto(json.dumps(lectura).encode(), ("127.0.0.1", rutas.PUERTO_DATOS))
+            rapido = bool(pedido.get("r"))
+            entrada.settimeout(0.05 if rapido else 0.25)
+            if pedido.get("t") and not temperaturas.iniciado:
+                temperaturas.arrancar()
+            elif not pedido.get("t") and temperaturas.iniciado:
+                logging.info("Temperaturas apagadas: el ayudante se cierra para liberar memoria")
+                break  # .NET no se puede descargar: Orbit lo vuelve a abrir sin los sensores
+            ahora = time.monotonic()
+            if ahora - ultimo_envio >= ENVIO[rapido]:
+                ultimo_envio = ahora
+                pid = sistema.pid_en_primer_plano()
+                lectura = dict(temperaturas.datos, fps=fps.de(pid, VENTANA_FPS[rapido]), app=fps.nombres.get(pid, ""))
+                salida.sendto(json.dumps(lectura).encode(), ("127.0.0.1", rutas.PUERTO_DATOS))
     finally:
         fps.parar()
         logging.info("Ayudante cerrado")

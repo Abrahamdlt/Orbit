@@ -14,10 +14,12 @@ def atajo(letra):
 
 DEFECTO = {
     "iniciar_con_windows": True,
+    "bajo_consumo": False,
     "plugins": {
         "radial": {"instalado": True, "activo": True, "atajo": atajo("R"),
                    "tecla_vk": 0x09, "tecla_nombre": "Tab", "notificaciones": False},
         "fps": {"instalado": False, "activo": False, "atajo": atajo("F"), "posicion": "arriba-izquierda",
+                "baja_latencia": False, "temperaturas": True,
                 "metricas": {"fps": True, "cpu": True, "gpu": True, "ram": True}},
     },
 }

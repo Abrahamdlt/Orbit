@@ -85,15 +85,19 @@ class Rueda(QWidget):
         self.paleta = estilo.paleta()
         self._ticks_sin_boton = 0
         x, y = pos.x() - self.TAM // 2, pos.y() - self.TAM // 2
-        try:
-            self.fondo = estilo.capturar_fondo(x, y, self.TAM, self.TAM)
-        except Exception:
-            logging.exception("No se pudo capturar el fondo")
-            self.fondo = None
+        self.fondo = None
+        if not estilo.BAJO_CONSUMO:
+            try:
+                self.fondo = estilo.capturar_fondo(x, y, self.TAM, self.TAM)
+            except Exception:
+                logging.exception("No se pudo capturar el fondo")
         self.move(x, y)
         self.show()
         self.raise_()
-        self.apertura.start()
+        if estilo.BAJO_CONSUMO:
+            self._animar(1.0)
+        else:
+            self.apertura.start()
         self.vigilante.start()
         # El arrastre de Windows solo "ve" la ventana nueva cuando el ratón se mueve: lo empujamos 1 px
         QTimer.singleShot(60, lambda: self._empujar_cursor(1))
@@ -136,7 +140,11 @@ class Rueda(QWidget):
     def _resaltar(self, indice):
         if indice != self.resaltado:
             self.resaltado_previo, self.resaltado = self.resaltado, indice
-            self.transicion.start()
+            if estilo.BAJO_CONSUMO:
+                self.resaltado_previo = -1
+                self._brillo(1.0)
+            else:
+                self.transicion.start()
 
     def dragEnterEvent(self, evento):
         if not self.recibio_arrastre:
@@ -229,7 +237,7 @@ class Rueda(QWidget):
         p.setClipPath(disco)
         if self.fondo is not None:
             p.drawPixmap(0, 0, self.fondo)
-        p.fillPath(disco, QColor(*pal.vidrio))
+        p.fillPath(disco, estilo.tinte(pal))
         brillo = QLinearGradient(0, centro.y() - r_ext, 0, centro.y() + r_ext)
         brillo.setColorAt(0.0, QColor(255, 255, 255, 50 if pal.oscuro else 90))
         brillo.setColorAt(0.55, QColor(255, 255, 255, 0))

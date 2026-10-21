@@ -27,6 +27,7 @@ class Orbit(QObject):
         self.qapp.setQuitOnLastWindowClosed(False)
         self.qapp.setFont(estilo.fuente(10))
         self.config = Config()
+        estilo.BAJO_CONSUMO = self.config["bajo_consumo"]
         self.aviso = estilo.Aviso()
         self.atajos = Atajos()
         self.atajos.disparado.connect(self._atajo)
@@ -155,6 +156,15 @@ class Orbit(QObject):
                 sistema.crear_acceso(rutas.ACCESO_INICIO, pythonw, f'"{os.path.join(rutas.BASE, "orbit.pyw")}"')
         else:
             sistema.borrar_archivo(rutas.ACCESO_INICIO)
+
+    def fijar_bajo_consumo(self, activar):
+        self.config["bajo_consumo"] = activar
+        self.config.guardar()
+        estilo.BAJO_CONSUMO = activar
+        for plugin in self.plugins:
+            if plugin.activo and hasattr(plugin, "aplicar_ritmo"):
+                plugin.aplicar_ritmo()
+        self.cambio.emit()
 
     def desinstalar(self):
         if not confirmar("Desinstalar Orbit", "Se quitarán Orbit, sus plugins y sus ajustes de este equipo."

@@ -35,7 +35,7 @@ class Lateral(QWidget):
 
     def elegir(self, indice, animar=True):
         self.indice = indice
-        if animar:
+        if animar and not estilo.BAJO_CONSUMO:
             self._anim.stop()
             self._anim.setStartValue(self._y)
             self._anim.setEndValue(float(indice))
@@ -164,6 +164,15 @@ class PaginaGeneral(Pagina):
         inicio.fijar(app.config["iniciar_con_windows"])
         inicio.toggled.connect(app.fijar_inicio_con_windows)
         self.agregar(grupo(Fila("Iniciar con Windows", "Orbit se abre sola al encender el equipo.", inicio)))
+        bajo = Interruptor()
+        bajo.fijar(app.config["bajo_consumo"])
+        bajo.toggled.connect(app.fijar_bajo_consumo)
+        self.agregar(grupo(
+            Fila("Modo bajo consumo", "Sin animaciones ni efecto vidrio, el Medidor FPS se actualiza cada 2 segundos "
+                                      "y Ajustes se libera de la memoria al cerrarla.", bajo),
+            Fila("Ahorro extra en el Medidor FPS", "Apagar «Temperaturas» en el Medidor ahorra unos 100 MB: el "
+                                                  "ayudante ya no carga los sensores."),
+            titulo="Rendimiento"))
         github = estilo.boton("Ver en GitHub", "enlace")
         github.clicked.connect(lambda: webbrowser.open(REPOSITORIO))
         self.agregar(grupo(Fila("Versión", f"Orbit {VERSION}"),
@@ -207,6 +216,8 @@ class VentanaAjustes(QWidget):
 
     def _mostrar(self, indice):
         self.paginas.setCurrentIndex(indice)
+        if estilo.BAJO_CONSUMO:
+            return
         efecto = QGraphicsOpacityEffect(self.paginas.currentWidget())
         self.paginas.currentWidget().setGraphicsEffect(efecto)
         anim = QPropertyAnimation(efecto, b"opacity", self, duration=200, startValue=0.0, endValue=1.0,
@@ -222,3 +233,10 @@ class VentanaAjustes(QWidget):
     def refrescar(self):
         for pagina in self.paginas_plugin.values():
             pagina.refrescar()
+
+    def closeEvent(self, evento):
+        # En bajo consumo la ventana no se guarda: se libera y se vuelve a crear al abrirla
+        if estilo.BAJO_CONSUMO:
+            self.app.ventana_ajustes = None
+            self.deleteLater()
+        super().closeEvent(evento)

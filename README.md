@@ -12,6 +12,13 @@ interruptor, tiene su propio atajo de teclado y sus ajustes en una barra lateral
 | **Rueda radial** | Arrastra un archivo o carpeta en el Explorador y pulsa **Tab**: aparece una rueda para comprimir (ZIP, RAR, 7z), convertir (Word, Excel y PowerPoint a PDF, imágenes a PNG/JPG/WEBP/ICO/PDF) o extraer. | Ctrl + Alt + Shift + R |
 | **Medidor FPS** | Una pastilla discreta encima de cualquier ventana o juego con FPS, uso y temperatura de CPU y GPU, y uso de RAM. | Ctrl + Alt + Shift + F |
 
+### Rendimiento
+
+- **Modo bajo consumo** (*Ajustes → General*): sin animaciones ni efecto vidrio, el Medidor FPS se actualiza cada
+  2 segundos y la ventana de Ajustes se libera de la memoria al cerrarla.
+- **Temperaturas** (*Medidor FPS*): apagarlas ahorra unos 100 MB, porque el ayudante ya no carga los sensores.
+- **Baja latencia** (*Medidor FPS*): el FPS se actualiza 4 veces por segundo y reacciona al instante a los tirones.
+
 ## Descargar e instalar
 
 1. Descarga **Orbit.exe** desde [Releases](../../releases/latest).

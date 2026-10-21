@@ -153,10 +153,12 @@ class Panel(QWidget):
         zona = pantalla.availableGeometry()
         x = min(max(zona.left(), zona_icono.center().x() - self.width() // 2), zona.right() - self.width() + SOMBRA - 4)
         y = zona.bottom() - self.height() + SOMBRA - 4 if zona_icono.top() >= zona.bottom() - 4 else zona.top() - SOMBRA + 4
-        try:
-            self.fondo = estilo.capturar_fondo(x, y, self.width(), self.height())
-        except Exception:
-            self.fondo = None
+        self.fondo = None
+        if not estilo.BAJO_CONSUMO:
+            try:
+                self.fondo = estilo.capturar_fondo(x, y, self.width(), self.height())
+            except Exception:
+                pass
         self.move(x, y)
         estilo.animar_aparicion(self, desplazamiento=12)
         self.activateWindow()
@@ -180,7 +182,7 @@ class Panel(QWidget):
         p.setClipPath(forma)
         if self.fondo is not None:
             p.drawPixmap(0, 0, self.fondo)
-        p.fillPath(forma, QColor(*pal.vidrio))
+        p.fillPath(forma, estilo.tinte(pal))
         brillo = QLinearGradient(caja.topLeft(), caja.bottomLeft())
         brillo.setColorAt(0, QColor(255, 255, 255, 30 if pal.oscuro else 60))
         brillo.setColorAt(0.4, QColor(255, 255, 255, 0))

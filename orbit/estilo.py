@@ -11,6 +11,8 @@ from PySide6.QtWidgets import QAbstractButton, QWidget
 from . import sistema
 
 FUENTE_TITULOS = "Segoe UI Variable Display"
+# Modo bajo consumo (lo fija la app): sin animaciones ni efecto vidrio
+BAJO_CONSUMO = False
 FUENTE_TEXTO = "Segoe UI Variable Text"
 
 
@@ -40,6 +42,12 @@ OSCURA = Paleta(True, "#1E1E20", "#28282B", "#2C2C2E", "#F5F5F7", "#98989D", "rg
 
 def paleta():
     return OSCURA if sistema.tema_oscuro() else CLARA
+
+
+def tinte(pal):
+    """Color del vidrio. En bajo consumo no hay fondo desenfocado: se usa casi opaco."""
+    r, g, b, a = pal.vidrio
+    return QColor(r, g, b, 248 if BAJO_CONSUMO else a)
 
 
 def fuente(tam, peso=QFont.Normal, titulo=False):
@@ -244,6 +252,9 @@ class Interruptor(QAbstractButton):
 
     def _animar(self, activo):
         self._anim.stop()
+        if BAJO_CONSUMO:
+            self._mover(1.0 if activo else 0.0)
+            return
         self._anim.setStartValue(self._pos)
         self._anim.setEndValue(1.0 if activo else 0.0)
         self._anim.start()
@@ -305,9 +316,12 @@ class Segmentado(QWidget):
         if indice != self.indice:
             self.indice = indice
             self._anim.stop()
-            self._anim.setStartValue(self._x)
-            self._anim.setEndValue(float(indice))
-            self._anim.start()
+            if BAJO_CONSUMO:
+                self._mover(float(indice))
+            else:
+                self._anim.setStartValue(self._x)
+                self._anim.setEndValue(float(indice))
+                self._anim.start()
             self.cambiado.emit(indice)
 
     def paintEvent(self, _):
@@ -382,6 +396,11 @@ class Aviso(QWidget):
 
     def _ir_a(self, destino):
         self._anim.stop()
+        if BAJO_CONSUMO:
+            self._mover(destino)
+            if destino <= 0:
+                self.hide()
+            return
         self._anim.setStartValue(self._t)
         self._anim.setEndValue(destino)
         self._anim.start()
@@ -419,6 +438,10 @@ class Aviso(QWidget):
 
 def animar_aparicion(ventana, desplazamiento=10, duracion=240):
     """Entrada suave: aparece desde un poco más abajo y se desvanece hacia visible."""
+    if BAJO_CONSUMO:
+        ventana.setWindowOpacity(1.0)
+        ventana.show()
+        return
     destino = ventana.pos()
     ventana.setWindowOpacity(0.0)
     ventana.move(destino.x(), destino.y() + desplazamiento)

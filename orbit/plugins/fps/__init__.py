@@ -34,8 +34,13 @@ class PluginFPS(Plugin):
             self.medidor = Medidor()
         self.medidor.metricas = self.cfg["metricas"]
         self.medidor.posicion = self.cfg["posicion"]
+        self.aplicar_ritmo()
         self.lector.arrancar()
         self.medidor.aparecer()
+
+    def aplicar_ritmo(self):
+        """Ritmo de actualización según baja latencia, bajo consumo y temperaturas."""
+        self.lector.configurar(self.cfg["baja_latencia"], self.app.config["bajo_consumo"], self.cfg["temperaturas"])
 
     def detener(self):
         self.lector.parar()
@@ -76,6 +81,17 @@ class PluginFPS(Plugin):
             interruptor.fijar(self.cfg["metricas"].get(clave, True))
             interruptor.toggled.connect(lambda valor, c=clave: self._metrica(c, valor))
             filas_metricas.append(Fila(titulo, detalle, interruptor))
+        temperaturas = Interruptor()
+        temperaturas.fijar(self.cfg["temperaturas"])
+        temperaturas.toggled.connect(lambda valor: self._opcion("temperaturas", valor))
+        filas_metricas.append(Fila("Temperaturas", "De CPU y GPU. Apagarlas ahorra unos 100 MB de RAM.", temperaturas))
+
+        latencia = Interruptor()
+        latencia.fijar(self.cfg["baja_latencia"])
+        latencia.toggled.connect(lambda valor: self._opcion("baja_latencia", valor))
+        fila_latencia = Fila("Baja latencia", "El FPS se actualiza 4 veces por segundo y reacciona al instante a los "
+                                              "tirones. El número varía más. Con el modo bajo consumo, solo el FPS "
+                                              "va rápido.", latencia)
 
         posicion = Segmentado(["Arriba izq.", "Arriba der.", "Abajo izq.", "Abajo der."])
         posicion.fijar(POSICIONES.index(self.cfg["posicion"]))
@@ -94,6 +110,7 @@ class PluginFPS(Plugin):
         nota = Fila("Juegos en pantalla completa exclusiva",
                     "En ese modo Windows no deja dibujar nada encima. Usa «ventana sin bordes» en el juego.")
         return [grupo(*filas_metricas, titulo="Qué mostrar"),
+                grupo(fila_latencia, titulo="Actualización"),
                 grupo(Fila("Posición", "", posicion), titulo="Dónde"),
                 grupo(self._fila_estado, fila_pawnio, nota, titulo="Lectura")]
 
@@ -103,6 +120,12 @@ class PluginFPS(Plugin):
         if self.medidor:
             self.medidor.metricas = self.cfg["metricas"]
             self.medidor.actualizar(self.medidor.lectura)
+
+    def _opcion(self, clave, valor):
+        self.cfg[clave] = valor
+        self.app.config.guardar()
+        if self.activo:
+            self.aplicar_ritmo()
 
     def _posicion(self, indice):
         self.cfg["posicion"] = POSICIONES[indice]
