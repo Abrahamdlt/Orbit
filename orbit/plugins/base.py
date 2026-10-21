@@ -42,6 +42,10 @@ class Plugin(QObject):
         self.app.fijar_activo(self, not self.activo)
         self.app.aviso.mostrar(self.icono, self.nombre, "Activado" if self.activo else "Desactivado")
 
+    def avisar_desactivado(self):
+        """Para los plugins de acción: su atajo no hace nada mientras están apagados."""
+        self.app.aviso.mostrar(self.icono, self.nombre, "Está desactivado: actívalo desde Orbit")
+
     def guardar(self, **valores):
         self.cfg.update(valores)
         self.app.config.guardar()
