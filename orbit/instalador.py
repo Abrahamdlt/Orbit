@@ -111,8 +111,11 @@ class Instalador(QWidget):
                  "Orbit es nueva y no tiene una firma digital de pago, así que Windows o el antivirus pueden mostrar "
                  "«Windows protegió tu PC». Pulsa «Más información» y luego «Ejecutar de todas formas»."),
             Fila("Por qué puedes confiar",
-                 "Orbit no se conecta a internet, no guarda lo que escribes y no envía datos a nadie. Solo reacciona "
-                 "a una tecla mientras arrastras algo, y todo su código es público en GitHub."),
+                 "Orbit no se conecta a internet y no envía datos a nadie: hasta el reconocimiento de texto ocurre "
+                 "en tu equipo. Cada plugin actúa solo con su atajo, y todo el código es público en GitHub."),
+            Fila("Historial del portapapeles",
+                 "Guarda en memoria lo que copias (en disco solo si lo pides) y no guarda lo que copian los gestores "
+                 "de contraseñas. Viene sin marcar: elígelo si lo quieres."),
             Fila("Juegos en pantalla completa exclusiva",
                  "El Medidor FPS no puede dibujarse encima en ese modo. Usa «ventana sin bordes» en el juego."),
             Fila("Conversiones de Office",
@@ -196,6 +199,7 @@ class Instalador(QWidget):
         self.titulo_final = etiqueta("Instalando…", "titulo")
         self.estado = etiqueta("", "secundario", envolver=True)
         self.estado.setAlignment(Qt.AlignCenter)
+        self.estado.setFixedWidth(460)  # centrada y con ancho fijo: si no, Qt corta la última línea
         for w in (self.cargando, self.check, self.titulo_final, self.estado):
             pagina.diseno.addWidget(w, 0, Qt.AlignHCenter)
         self.resumen = QWidget()
@@ -297,7 +301,24 @@ class Instalador(QWidget):
         self.estado.setText("" if fallo else "La encontrarás junto al reloj, en la bandeja del sistema. "
                                              "Haz clic en su icono para ver tus plugins.")
         filas = []
+        # Lo que salió bien va en una sola fila de iconos; lo demás (sin permiso, quitado, error), en filas aparte
+        listos = [(icono, nombre) for icono, nombre, texto in resumen if texto == "Listo"]
+        if listos:
+            fila = QWidget()
+            h = QHBoxLayout(fila)
+            h.setContentsMargins(14, 10, 14, 10)
+            h.setSpacing(6)
+            for icono, nombre in listos:
+                icono_plugin = IconoPlugin(icono, 24)
+                icono_plugin.setToolTip(nombre)
+                h.addWidget(icono_plugin)
+            h.addStretch()
+            h.addWidget(etiqueta(f"{len(listos)} plugin{'s' if len(listos) > 1 else ''} "
+                                 f"listo{'s' if len(listos) > 1 else ''}", "secundario"))
+            filas.append(fila)
         for icono, nombre, texto in resumen:
+            if texto == "Listo":
+                continue
             fila = QWidget()
             h = QHBoxLayout(fila)
             h.setContentsMargins(14, 8, 14, 8)

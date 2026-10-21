@@ -168,8 +168,9 @@ class PaginaGeneral(Pagina):
         bajo.fijar(app.config["bajo_consumo"])
         bajo.toggled.connect(app.fijar_bajo_consumo)
         self.agregar(grupo(
-            Fila("Modo bajo consumo", "Sin animaciones ni efecto vidrio, el Medidor FPS se actualiza cada 2 segundos "
-                                      "y Ajustes se libera de la memoria al cerrarla.", bajo),
+            Fila("Modo bajo consumo", "Sin animaciones ni efecto vidrio, el Medidor FPS se actualiza cada 2 segundos, "
+                                      "el borde de Siempre encima sigue a la ventana con menos frecuencia y Ajustes "
+                                      "se libera de la memoria al cerrarla.", bajo),
             Fila("Ahorro extra en el Medidor FPS", "Apagar «Temperaturas» en el Medidor ahorra unos 100 MB: el "
                                                   "ayudante ya no carga los sensores."),
             titulo="Rendimiento"))

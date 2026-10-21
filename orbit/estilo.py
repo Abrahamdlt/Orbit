@@ -82,6 +82,7 @@ def hoja_de_estilo(p):
     QScrollBar:vertical {{ width: 8px; background: transparent; }}
     QScrollBar::handle:vertical {{ background: {p.separador}; border-radius: 4px; min-height: 30px; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
+    QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
     """
 
 
