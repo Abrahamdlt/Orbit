@@ -3,7 +3,7 @@ import time
 
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainter
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QSizePolicy, QVBoxLayout, QWidget
 
 from . import VERSION, estilo
 from .estilo import IconoPlugin, Interruptor
@@ -11,6 +11,30 @@ from .estilo import IconoPlugin, Interruptor
 SOMBRA = 14  # margen transparente alrededor para la sombra
 RADIO = 16
 ALTO_MAXIMO = 0.8  # fracción del alto de la pantalla: si hay más plugins, la lista se desplaza
+
+
+class Recortada(QLabel):
+    """Una línea que termina en «…» si no cabe, en vez de ensanchar la fila (y cortar el interruptor).
+    El texto entero se ve al pasar el ratón."""
+
+    def __init__(self, texto=""):
+        super().__init__()
+        self.completo = texto
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self._recortar()
+
+    def fijar(self, texto):
+        self.completo = texto
+        self._recortar()
+
+    def resizeEvent(self, evento):
+        super().resizeEvent(evento)
+        self._recortar()
+
+    def _recortar(self):
+        visible = self.fontMetrics().elidedText(self.completo, Qt.ElideRight, max(0, self.width()))
+        self.setText(visible)
+        self.setToolTip(self.completo if visible != self.completo else "")
 
 
 class FilaPlugin(QWidget):
@@ -26,9 +50,9 @@ class FilaPlugin(QWidget):
         diseno.addWidget(IconoPlugin(plugin.icono, 32))
         textos = QVBoxLayout()
         textos.setSpacing(0)
-        nombre = QLabel(plugin.nombre)
+        nombre = Recortada(plugin.nombre)
         nombre.setFont(estilo.fuente(10.5, QFont.DemiBold))
-        self.estado = QLabel()
+        self.estado = Recortada()
         self.estado.setObjectName("secundario")
         self.estado.setFont(estilo.fuente(8.5))
         textos.addStretch()
@@ -48,8 +72,7 @@ class FilaPlugin(QWidget):
         self.interruptor.setVisible(instalado)
         self.anadir.setVisible(not instalado)
         self.interruptor.fijar(self.plugin.activo)
-        self.estado.setText(self.plugin.estado() if instalado else
-                            "No instalado")
+        self.estado.fijar(self.plugin.estado() if instalado else "No instalado")
 
     def enterEvent(self, _):
         self.encima = True
