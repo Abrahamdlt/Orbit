@@ -12,7 +12,7 @@ interruptor, tiene su propio atajo de teclado y sus ajustes en una barra lateral
 | **Rueda radial** | Arrastra un archivo o carpeta en el Explorador y pulsa **Tab**: aparece una rueda para comprimir (ZIP, RAR, 7z), convertir (Word, Excel y PowerPoint a PDF, imágenes a PNG/JPG/WEBP/ICO/PDF) o extraer. | Ctrl + Alt + Shift + R |
 | **Medidor FPS** | Una pastilla discreta encima de cualquier ventana o juego con FPS, uso y temperatura de CPU y GPU, y uso de RAM. | Ctrl + Alt + Shift + F |
 | **Texto de pantalla** | Eliges un área de la pantalla y su texto se copia al portapapeles, aunque sea una imagen, un PDF escaneado o un video. Usa el reconocimiento de texto de Windows, sin internet. | Ctrl + Alt + Shift + T |
-| **Historial del portapapeles** | Recuerda lo último que copias (texto e imágenes). El atajo abre una lista con buscador junto al cursor; al elegir, lo pega donde estabas. | Ctrl + Alt + Shift + V |
+| **Historial del portapapeles** | Recuerda lo último que copias: texto, imágenes y archivos. El atajo abre una lista con buscador junto al cursor; al elegir, lo pega donde estabas, o lo arrastras a una carpeta o a otra ventana. | Ctrl + Alt + Shift + V |
 | **Cambio de audio** | Pasa a la siguiente de tus salidas favoritas (audífonos, parlantes...) sin abrir la configuración de sonido. | Ctrl + Alt + Shift + A |
 | **Siempre encima** | Fija la ventana que tienes delante por encima de las demás, con un borde de color. El mismo atajo la suelta. | Ctrl + Alt + Shift + P |
 | **Mantener despierto** | El equipo no se suspende (ni apaga la pantalla, si quieres) durante 30 min, 1 h, 2 h o hasta que lo apagues. | Ctrl + Alt + Shift + D |
@@ -59,7 +59,8 @@ Orbit no se conecta a internet ni envía datos. Los datos del Medidor FPS viajan
 (127.0.0.1) y el Texto de pantalla lee la imagen con el OCR de Windows, sin salir del equipo. Los ajustes se guardan
 en `%APPDATA%\Orbit`.
 
-El **Historial del portapapeles** viene sin marcar en el instalador. Guarda lo que copias solo en memoria (se olvida
+El **Historial del portapapeles** viene sin marcar en el instalador. De los archivos guarda solo dónde están, no su
+contenido. Guarda lo que copias solo en memoria (se olvida
 al cerrar Orbit) salvo que actives *Recordar al reiniciar*, que lo guarda sin cifrar en `%APPDATA%\Orbit`. Lo que
 copian los gestores de contraseñas no se guarda nunca: Orbit respeta los formatos con los que piden no aparecer en
 historiales (`ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory` y

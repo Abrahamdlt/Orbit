@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 
 from PySide6.QtCore import QBuffer, QByteArray, Qt, QTimer
 from PySide6.QtGui import QCursor, QGuiApplication, QImage
@@ -14,7 +15,7 @@ from ...ui import Fila, grupo
 from ..base import Plugin
 from . import pegar
 from .historial import Historial, es_privado
-from .lista import Lista
+from .lista import CARPETA_TEMPORAL, Lista, mime_de
 
 ARCHIVO = os.path.join(rutas.DATOS, "portapapeles.json")
 TAMANOS = [15, 30, 50, 100]
@@ -32,8 +33,8 @@ def a_png(imagen):
 class PluginPortapapeles(Plugin):
     id = "portapapeles"
     nombre = "Historial del portapapeles"
-    descripcion = ("Recuerda lo último que copias, texto e imágenes, para pegarlo otra vez cuando quieras, con "
-                   "buscador. No guarda lo que copian los gestores de contraseñas.")
+    descripcion = ("Recuerda lo último que copias (texto, imágenes y archivos) para pegarlo o arrastrarlo otra vez "
+                   "cuando quieras, con buscador. No guarda lo que copian los gestores de contraseñas.")
     icono = "portapapeles"
     texto_atajo = "Abrir el historial"
     por_defecto = False  # guarda lo que copias: mejor que lo elija cada uno
@@ -77,6 +78,7 @@ class PluginPortapapeles(Plugin):
             self._guardar_disco()
         if self.lista:
             self.lista.hide()
+        shutil.rmtree(CARPETA_TEMPORAL, ignore_errors=True)  # las imágenes que se arrastraron
 
     # --- escuchar el portapapeles
     def _leer(self):
@@ -92,7 +94,13 @@ class PluginPortapapeles(Plugin):
         if es_privado(mime.formats(), lambda formato: mime.data(formato).data()):
             logging.info("Portapapeles: contenido marcado como privado, no se guarda")
             return
-        if mime.hasText() and mime.text().strip():
+        urls = mime.urls() if mime.hasUrls() else []
+        if urls and all(url.isLocalFile() for url in urls):
+            # Archivos o carpetas (Qt también los da como texto: por eso se miran antes)
+            rutas = [os.path.normpath(url.toLocalFile()) for url in urls]
+            clave = "f" + hashlib.sha1("\n".join(rutas).casefold().encode("utf-8", "surrogatepass")).hexdigest()
+            elemento = Historial.archivos(rutas, clave)
+        elif mime.hasText() and mime.text().strip():
             texto = mime.text()
             if len(texto) > MAXIMO_TEXTO:
                 return
@@ -134,17 +142,18 @@ class PluginPortapapeles(Plugin):
             self.lista.elegido.connect(self._elegido)
             self.lista.fijado.connect(self._fijar)
             self.lista.quitado.connect(self._quitar)
+            self.lista.no_existe.connect(self._no_existe)
         if self.lista.isVisible():
             self.lista.hide()
             return
         self.lista.abrir(QCursor.pos(), user32.GetForegroundWindow() or 0)
 
     def _elegido(self, elemento):
-        portapapeles = QGuiApplication.clipboard()
-        if elemento["tipo"] == "texto":
-            portapapeles.setText(elemento["texto"])
-        else:
-            portapapeles.setImage(QImage.fromData(elemento["png"]))
+        mime = mime_de(elemento)
+        if mime is None:
+            self._no_existe()
+            return
+        QGuiApplication.clipboard().setMimeData(mime)  # archivos como archivos: en una carpeta se copian
         anterior = self.lista.anterior
         pegar.activar(anterior)
         if self.cfg.get("solo_copiar"):
@@ -154,6 +163,9 @@ class PluginPortapapeles(Plugin):
             self.app.aviso.mostrar(self.icono, "Copiado, pega con Ctrl+V", "Esa ventana es de administrador")
         else:
             QTimer.singleShot(80, pegar.ctrl_v)  # tiempo para que la ventana recupere el foco
+
+    def _no_existe(self):
+        self.app.aviso.mostrar(self.icono, "Ya no existe", "Se movió o se borró después de copiarlo")
 
     def _fijar(self, clave, fijado):
         self.historial.fijar(clave, fijado)
@@ -212,9 +224,11 @@ class PluginPortapapeles(Plugin):
                       self._fila_borrar, titulo="Historial"),
                 grupo(Fila("Contraseñas", "No guarda lo que copian los gestores de contraseñas (Bitwarden, "
                                           "1Password, KeePass…) ni lo que Windows marca para no guardar."),
+                      Fila("Archivos", "Si copias archivos o carpetas, se guardan como archivos: al pegarlos en una "
+                                       "carpeta se copian ahí. Se recuerda dónde están, no su contenido."),
                       Fila("En la lista", "Escribe para buscar. ↑↓ para elegir, Enter pega, Ctrl+P fija un elemento "
-                                          "y Supr lo quita. También con el ratón: clic para pegar y clic en la "
-                                          "chincheta para fijar."),
+                                          "y Supr lo quita. Con el ratón: clic para pegar, clic en la chincheta para "
+                                          "fijar, o arrastra el elemento a otra ventana o a una carpeta."),
                       titulo="Cómo funciona")]
 
     def _refrescar_fila(self):

@@ -1,5 +1,6 @@
 """El historial del portapapeles, sin Qt: repetidos, máximo, fijados y la regla de privacidad."""
 import base64
+import ntpath
 import re
 import time
 
@@ -44,6 +45,11 @@ class Historial:
         return {"tipo": "imagen", "png": png, "mini": mini, "ancho": ancho, "alto": alto, "clave": clave,
                 "fijado": False, "hora": hora or time.time()}
 
+    @staticmethod
+    def archivos(rutas, clave, hora=None):
+        """Archivos o carpetas copiados (en el Explorador, por ejemplo): se guardan sus rutas, no su contenido."""
+        return {"tipo": "archivos", "rutas": list(rutas), "clave": clave, "fijado": False, "hora": hora or time.time()}
+
     def buscar_clave(self, clave):
         return next((e for e in self.elementos if e["clave"] == clave), None)
 
@@ -85,7 +91,8 @@ class Historial:
         busqueda = busqueda.casefold().strip()
         lista = [e for e in self.elementos if not busqueda
                  or (e["tipo"] == "texto" and busqueda in e["texto"].casefold())
-                 or (e["tipo"] == "imagen" and busqueda in "imagen")]
+                 or (e["tipo"] == "imagen" and busqueda in "imagen")
+                 or (e["tipo"] == "archivos" and any(busqueda in ntpath.basename(r).casefold() for r in e["rutas"]))]
         return [e for e in lista if e["fijado"]] + [e for e in lista if not e["fijado"]]
 
     # --- guardar en disco («Recordar al reiniciar»)
@@ -104,7 +111,7 @@ class Historial:
         for e in datos:
             if e.get("tipo") == "imagen":
                 e = dict(e, png=base64.b64decode(e["png"]), mini=base64.b64decode(e["mini"]))
-            elif e.get("tipo") != "texto":
+            elif e.get("tipo") not in ("texto", "archivos"):
                 continue
             self.elementos.append(e)
         self._recortar()

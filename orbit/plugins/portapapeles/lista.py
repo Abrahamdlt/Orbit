@@ -1,9 +1,12 @@
-"""La lista del historial: un panel de vidrio junto al cursor, con buscador y navegación con el teclado."""
+"""La lista del historial: un panel de vidrio junto al cursor, con buscador y navegación con el teclado.
+Cada elemento se pega con Enter o un clic, o se arrastra a otra ventana o a una carpeta."""
+import os
+import tempfile
 import time
 
-from PySide6.QtCore import QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QFontMetrics, QGuiApplication, QImage, QPainter, QPixmap
-from PySide6.QtWidgets import QLabel, QLineEdit, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtCore import QFileInfo, QMimeData, QPoint, QRectF, Qt, QUrl, Signal
+from PySide6.QtGui import QColor, QDrag, QFont, QFontMetrics, QGuiApplication, QImage, QPainter, QPixmap
+from PySide6.QtWidgets import QApplication, QFileIconProvider, QLabel, QLineEdit, QScrollArea, QVBoxLayout, QWidget
 
 from ... import estilo
 
@@ -12,6 +15,39 @@ ANCHO = 380
 ALTO_FILA = 48
 FILAS_VISIBLES = 7
 MINIATURA = (52, 34)  # puntos
+# Al arrastrar una imagen hace falta un archivo (las carpetas y muchos chats solo aceptan archivos)
+CARPETA_TEMPORAL = os.path.join(tempfile.gettempdir(), "Orbit", "portapapeles")
+
+
+def existentes(elemento):
+    return [r for r in elemento["rutas"] if os.path.exists(r)]
+
+
+def mime_de(elemento, arrastre=False):
+    """Lo que se pone en el portapapeles o se arrastra. None si eran archivos y ya no existe ninguno."""
+    mime = QMimeData()
+    if elemento["tipo"] == "texto":
+        mime.setText(elemento["texto"])
+    elif elemento["tipo"] == "archivos":
+        rutas = existentes(elemento)
+        if not rutas:
+            return None
+        mime.setUrls([QUrl.fromLocalFile(r) for r in rutas])
+    else:
+        mime.setImageData(QImage.fromData(elemento["png"]))
+        if arrastre:
+            os.makedirs(CARPETA_TEMPORAL, exist_ok=True)
+            ruta = os.path.join(CARPETA_TEMPORAL, f"Imagen {elemento['clave'][1:9]}.png")
+            if not os.path.exists(ruta):
+                with open(ruta, "wb") as f:
+                    f.write(elemento["png"])
+            mime.setUrls([QUrl.fromLocalFile(ruta)])
+    return mime
+
+
+def nombre(ruta):
+    """Nombre del archivo o carpeta. Una unidad (C:\\) no tiene nombre: se muestra entera."""
+    return os.path.basename(ruta.rstrip("\\/")) or ruta
 
 
 def hace(hora):
@@ -49,6 +85,7 @@ class Filas(QWidget):
     def __init__(self, lista):
         super().__init__()
         self.lista = lista
+        self.pulsado = None  # (posición, índice) al apretar el botón: si se mueve lejos, se arrastra
         self.setMouseTracking(True)
         self.setCursor(Qt.PointingHandCursor)
 
@@ -59,14 +96,26 @@ class Filas(QWidget):
     def _en_chincheta(self, pos):
         return pos.x() >= self.width() - 40
 
+    def mousePressEvent(self, evento):
+        i = self._indice(evento.position())
+        if evento.button() == Qt.LeftButton and i >= 0:
+            self.pulsado = (evento.position().toPoint(), i)
+
     def mouseMoveEvent(self, evento):
+        if self.pulsado and evento.buttons() & Qt.LeftButton:
+            inicio, i = self.pulsado
+            if (evento.position().toPoint() - inicio).manhattanLength() >= QApplication.startDragDistance():
+                self.pulsado = None
+                self.lista.arrastrar(i)
+            return
         i = self._indice(evento.position())
         if i >= 0 and i != self.lista.indice:
             self.lista.seleccionar(i, desplazar=False)
 
     def mouseReleaseEvent(self, evento):
+        pulsado, self.pulsado = self.pulsado, None
         i = self._indice(evento.position())
-        if evento.button() != Qt.LeftButton or i < 0:
+        if evento.button() != Qt.LeftButton or i < 0 or pulsado is None:  # sin pulsado: fue un arrastre
             return
         if self._en_chincheta(evento.position()):
             self.lista.alternar_fijado(i)
@@ -81,13 +130,16 @@ class Lista(QWidget):
     elegido = Signal(dict)
     fijado = Signal(str, bool)
     quitado = Signal(str)
+    no_existe = Signal()  # se quiso arrastrar un archivo que ya no está
 
     def __init__(self, historial):
         super().__init__(None, Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.historial = historial
         self.visibles, self.indice = [], 0
-        self.miniaturas = {}  # clave -> QPixmap
+        self.miniaturas = {}  # clave -> QPixmap (miniatura de imagen o icono de archivo)
+        self.existen = {}     # clave -> True si sus archivos siguen ahí (se mira al abrir y al buscar)
+        self.iconos = QFileIconProvider()
         self.paleta = estilo.paleta()
         self.fondo = None
         self.anterior = 0  # la ventana que tenía el foco antes de abrir la lista
@@ -163,6 +215,7 @@ class Lista(QWidget):
 
     def _filtrar(self, texto):
         self.visibles = self.historial.ordenados(texto)
+        self.existen = {e["clave"]: bool(existentes(e)) for e in self.visibles if e["tipo"] == "archivos"}
         self.indice = 0
         self.filas.setFixedHeight(max(1, len(self.visibles)) * ALTO_FILA)
         self.desplazable.verticalScrollBar().setValue(0)
@@ -202,6 +255,20 @@ class Lista(QWidget):
             self.hide()
             self.elegido.emit(elemento)
 
+    def arrastrar(self, indice):
+        """Arrastra el elemento fuera de la lista: archivos a una carpeta, texto o imagen a otra ventana."""
+        elemento = self.visibles[indice]
+        mime = mime_de(elemento, arrastre=True)
+        if mime is None:
+            self.no_existe.emit()
+            return
+        arrastre = QDrag(self.filas)
+        arrastre.setMimeData(mime)
+        arrastre.setPixmap(self._imagen_arrastre(elemento))
+        arrastre.setHotSpot(QPoint(-12, -12))
+        if arrastre.exec(Qt.CopyAction) != Qt.IgnoreAction:  # lo soltó en algún sitio: la lista ya no hace falta
+            self.hide()
+
     def alternar_fijado(self, indice):
         if 0 <= indice < len(self.visibles):
             elemento = self.visibles[indice]
@@ -215,13 +282,52 @@ class Lista(QWidget):
         clave = elemento["clave"]
         if clave not in self.miniaturas:
             escala = self.devicePixelRatioF()
-            imagen = QImage.fromData(elemento.get("mini") or elemento["png"])
-            imagen = imagen.scaled(int(MINIATURA[0] * escala), int(MINIATURA[1] * escala), Qt.KeepAspectRatio,
-                                   Qt.SmoothTransformation)
-            miniatura = QPixmap.fromImage(imagen)
-            miniatura.setDevicePixelRatio(escala)
+            if elemento["tipo"] == "archivos":  # el icono de Windows del primero (carpeta, PDF, Word...)
+                miniatura = self.iconos.icon(QFileInfo(elemento["rutas"][0])).pixmap(32, 32)
+            else:
+                imagen = QImage.fromData(elemento.get("mini") or elemento["png"])
+                imagen = imagen.scaled(int(MINIATURA[0] * escala), int(MINIATURA[1] * escala), Qt.KeepAspectRatio,
+                                       Qt.SmoothTransformation)
+                miniatura = QPixmap.fromImage(imagen)
+                miniatura.setDevicePixelRatio(escala)
             self.miniaturas[clave] = miniatura
         return self.miniaturas[clave]
+
+    def _imagen_arrastre(self, elemento):
+        """Lo que se ve junto al cursor mientras se arrastra."""
+        if elemento["tipo"] != "texto":
+            return self._miniatura(elemento)
+        texto = QFontMetrics(estilo.fuente(9.5)).elidedText(una_linea(elemento["texto"]), Qt.ElideRight, 220)
+        escala = self.devicePixelRatioF()
+        imagen = QPixmap(int(240 * escala), int(30 * escala))
+        imagen.setDevicePixelRatio(escala)
+        imagen.fill(Qt.transparent)
+        p = QPainter(imagen)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(self.paleta.acento))
+        p.drawRoundedRect(QRectF(0, 0, 240, 30), 9, 9)
+        p.setPen(Qt.white)
+        p.setFont(estilo.fuente(9.5))
+        p.drawText(QRectF(10, 0, 222, 30), Qt.AlignVCenter | Qt.AlignLeft, texto)
+        p.end()
+        return imagen
+
+    def _pintar_miniatura(self, p, elemento, caja, x):
+        miniatura = self._miniatura(elemento)
+        tam = miniatura.deviceIndependentSize()
+        destino = QRectF(x + (MINIATURA[0] - tam.width()) / 2, caja.top() + (ALTO_FILA - tam.height()) / 2,
+                         tam.width(), tam.height())
+        p.drawPixmap(destino, miniatura, QRectF(miniatura.rect()))
+        n = len(elemento.get("rutas", ()))
+        if n > 1:  # varios archivos: el número en una burbuja sobre el icono
+            burbuja = QRectF(destino.right() - 9, destino.bottom() - 13, 18, 16)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(self.paleta.rojo))
+            p.drawRoundedRect(burbuja, 8, 8)
+            p.setPen(Qt.white)
+            p.setFont(estilo.fuente(7.5, QFont.DemiBold))
+            p.drawText(burbuja, Qt.AlignCenter, str(n) if n < 100 else "99+")
 
     def pintar_filas(self, p, ancho):
         pal = self.paleta
@@ -246,13 +352,17 @@ class Lista(QWidget):
             color2 = QColor(255, 255, 255, 200) if elegida else QColor(pal.texto2)
             x = 12.0
             if e["tipo"] == "imagen":
-                miniatura = self._miniatura(e)
-                tam = miniatura.deviceIndependentSize()
-                destino = QRectF(x + (MINIATURA[0] - tam.width()) / 2, caja.top() + (ALTO_FILA - tam.height()) / 2,
-                                 tam.width(), tam.height())
-                p.drawPixmap(destino, miniatura, QRectF(miniatura.rect()))
+                self._pintar_miniatura(p, e, caja, x)
                 x += MINIATURA[0] + 10
                 titulo, detalle = "Imagen", f"{e['ancho']} × {e['alto']}  ·  {hace(e['hora'])}"
+            elif e["tipo"] == "archivos":
+                self._pintar_miniatura(p, e, caja, x)
+                x += MINIATURA[0] + 10
+                rutas = e["rutas"]
+                titulo = nombre(rutas[0]) + (f" y {len(rutas) - 1} más" if len(rutas) > 1 else "")
+                carpeta = nombre(os.path.dirname(rutas[0].rstrip("\\/")))
+                detalle = carpeta if self.existen.get(e["clave"], True) else "Ya no existe"
+                detalle += f"  ·  {hace(e['hora'])}"
             else:
                 titulo = una_linea(e["texto"])
                 largo = len(e["texto"])
