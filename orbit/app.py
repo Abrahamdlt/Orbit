@@ -107,7 +107,8 @@ class Orbit(QObject):
             self._con_cuidado(plugin.al_atajo)
 
     def _refrescar(self):
-        self.panel.refrescar()
+        if self.panel.isVisible():  # si está oculto se refresca al abrirlo
+            self.panel.refrescar()
         if self.ventana_ajustes:
             self.ventana_ajustes.refrescar()
 

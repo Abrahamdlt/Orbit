@@ -42,7 +42,6 @@ class FilaPlugin(QWidget):
         self.anadir.clicked.connect(lambda: panel.app.instalar_plugin(plugin))
         diseno.addWidget(self.interruptor)
         diseno.addWidget(self.anadir)
-        self.refrescar()
 
     def refrescar(self):
         instalado = self.plugin.instalado
