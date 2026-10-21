@@ -21,6 +21,7 @@ DEFECTO = {
         "fps": {"instalado": False, "activo": False, "atajo": atajo("F"), "posicion": "arriba-izquierda",
                 "baja_latencia": False, "temperaturas": True,
                 "metricas": {"fps": True, "cpu": True, "gpu": True, "ram": True}},
+        "despierto": {"instalado": False, "activo": False, "atajo": atajo("D"), "duracion": 60, "pantalla": True},
     },
 }
 

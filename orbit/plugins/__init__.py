@@ -2,7 +2,8 @@
 
 Para añadir uno, crea su paquete con una clase que herede de base.Plugin y ponla aquí.
 """
+from .despierto import PluginDespierto
 from .fps import PluginFPS
 from .radial import PluginRadial
 
-CLASES = [PluginRadial, PluginFPS]
+CLASES = [PluginRadial, PluginFPS, PluginDespierto]
