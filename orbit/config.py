@@ -28,6 +28,8 @@ DEFECTO = {
         "color": {"instalado": False, "activo": True, "atajo": atajo("C"), "formato": "hex", "historial": []},
         "ocr": {"instalado": False, "activo": True, "atajo": atajo("T"), "idioma": "", "saltos": True},
         "audio": {"instalado": False, "activo": True, "atajo": atajo("A"), "favoritas": []},
+        "portapapeles": {"instalado": False, "activo": True, "atajo": atajo("V"), "maximo": 30, "recordar": False,
+                         "solo_copiar": False},
     },
 }
 

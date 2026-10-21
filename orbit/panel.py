@@ -2,7 +2,7 @@
 import time
 
 from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from . import VERSION, estilo
@@ -187,28 +187,4 @@ class Panel(QWidget):
         super().hideEvent(evento)
 
     def paintEvent(self, _):
-        pal = self.paleta
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        caja = QRectF(self.rect()).adjusted(SOMBRA, SOMBRA, -SOMBRA, -SOMBRA)
-        for i in range(SOMBRA, 0, -2):  # sombra difusa
-            p.setPen(Qt.NoPen)
-            p.setBrush(QColor(0, 0, 0, int(5 * (1 - i / SOMBRA) ** 1.5 * (3 if pal.oscuro else 2))))
-            p.drawRoundedRect(caja.adjusted(-i, -i + 4, i, i + 4), RADIO + i, RADIO + i)
-        forma = QPainterPath()
-        forma.addRoundedRect(caja, RADIO, RADIO)
-        p.save()
-        p.setClipPath(forma)
-        if self.fondo is not None:
-            p.drawPixmap(0, 0, self.fondo)
-        p.fillPath(forma, estilo.tinte(pal))
-        brillo = QLinearGradient(caja.topLeft(), caja.bottomLeft())
-        brillo.setColorAt(0, QColor(255, 255, 255, 30 if pal.oscuro else 60))
-        brillo.setColorAt(0.4, QColor(255, 255, 255, 0))
-        p.fillPath(forma, brillo)
-        p.restore()
-        p.setBrush(Qt.NoBrush)
-        p.setPen(QPen(QColor(255, 255, 255, 40 if pal.oscuro else 160), 1))
-        p.drawRoundedRect(caja.adjusted(0.5, 0.5, -0.5, -0.5), RADIO, RADIO)
-        p.setPen(QPen(QColor(0, 0, 0, 90 if pal.oscuro else 35), 1))
-        p.drawRoundedRect(caja.adjusted(-0.5, -0.5, 0.5, 0.5), RADIO + 0.5, RADIO + 0.5)
+        estilo.pintar_vidrio(QPainter(self), self.rect(), SOMBRA, RADIO, self.fondo, self.paleta)

@@ -9,6 +9,7 @@ from .encima import PluginEncima
 from .fps import PluginFPS
 from .ocr import PluginOCR
 from .pomodoro import PluginPomodoro
+from .portapapeles import PluginPortapapeles
 from .radial import PluginRadial
 
-CLASES = [PluginRadial, PluginFPS, PluginOCR, PluginAudio, PluginEncima, PluginDespierto, PluginColor, PluginPomodoro]
+CLASES = [PluginRadial, PluginFPS, PluginOCR, PluginPortapapeles, PluginAudio, PluginEncima, PluginDespierto, PluginColor, PluginPomodoro]

@@ -120,6 +120,34 @@ def desenfocar(imagen, pasos=4):
     return imagen.scaled(tam, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
 
+def pintar_vidrio(p, rect, sombra, radio, fondo, pal):
+    """Tarjeta de vidrio con sombra difusa (panel de la bandeja, historial del portapapeles).
+    rect es la ventana entera; la tarjeta queda dentro, a `sombra` puntos del borde."""
+    p.setRenderHint(QPainter.Antialiasing)
+    caja = QRectF(rect).adjusted(sombra, sombra, -sombra, -sombra)
+    for i in range(sombra, 0, -2):
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(0, 0, 0, int(5 * (1 - i / sombra) ** 1.5 * (3 if pal.oscuro else 2))))
+        p.drawRoundedRect(caja.adjusted(-i, -i + 4, i, i + 4), radio + i, radio + i)
+    forma = QPainterPath()
+    forma.addRoundedRect(caja, radio, radio)
+    p.save()
+    p.setClipPath(forma)
+    if fondo is not None:
+        p.drawPixmap(0, 0, fondo)
+    p.fillPath(forma, tinte(pal))
+    brillo = QLinearGradient(caja.topLeft(), caja.bottomLeft())
+    brillo.setColorAt(0, QColor(255, 255, 255, 30 if pal.oscuro else 60))
+    brillo.setColorAt(0.4, QColor(255, 255, 255, 0))
+    p.fillPath(forma, brillo)
+    p.restore()
+    p.setBrush(Qt.NoBrush)
+    p.setPen(QPen(QColor(255, 255, 255, 40 if pal.oscuro else 160), 1))
+    p.drawRoundedRect(caja.adjusted(0.5, 0.5, -0.5, -0.5), radio, radio)
+    p.setPen(QPen(QColor(0, 0, 0, 90 if pal.oscuro else 35), 1))
+    p.drawRoundedRect(caja.adjusted(-0.5, -0.5, 0.5, 0.5), radio + 0.5, radio + 0.5)
+
+
 def capturar_fondo(x, y, ancho, alto):
     """Foto desenfocada de lo que hay en pantalla en ese rectángulo (coordenadas globales)."""
     pantalla = QGuiApplication.screenAt(QPoint(x + ancho // 2, y + alto // 2)) or QGuiApplication.primaryScreen()
@@ -231,16 +259,8 @@ def dibujar_icono(p, rect, tipo):
         relleno()
         p.drawRoundedRect(marco(0.19, 0.48, 0.34, 0.76), lado * 0.05, lado * 0.05)
         p.drawRoundedRect(marco(0.66, 0.48, 0.81, 0.76), lado * 0.05, lado * 0.05)
-    elif tipo == "encima":  # chincheta inclinada
-        p.translate(c)
-        p.rotate(40)
-        p.translate(-c)
-        relleno()
-        p.drawRoundedRect(marco(0.37, 0.17, 0.63, 0.26), lado * 0.03, lado * 0.03)
-        p.drawPolygon(QPolygonF([pt(0.42, 0.26), pt(0.58, 0.26), pt(0.6, 0.46), pt(0.4, 0.46)]))
-        p.drawRoundedRect(marco(0.31, 0.45, 0.69, 0.53), lado * 0.035, lado * 0.035)
-        p.setPen(fina)
-        p.drawLine(pt(0.5, 0.53), pt(0.5, 0.82))
+    elif tipo == "encima":
+        dibujar_chincheta(p, rect, QColor(Qt.white))
     elif tipo == "despierto":  # taza de café
         p.setPen(fina)
         p.drawArc(marco(0.55, 0.47, 0.77, 0.67), -90 * 16, 180 * 16)
@@ -279,6 +299,28 @@ def dibujar_icono(p, rect, tipo):
             p.setBrush(Qt.white)
             p.drawEllipse(QPointF(rect.left() + lado * x, y), lado * 0.075, lado * 0.075)
             p.setBrush(Qt.NoBrush)
+    p.restore()
+
+
+def dibujar_chincheta(p, rect, color):
+    """Chincheta inclinada (icono de Siempre encima y elementos fijados del portapapeles)."""
+    p.save()
+    p.setRenderHint(QPainter.Antialiasing)
+    lado, c = rect.width(), rect.center()
+
+    def pt(x, y):
+        return QPointF(rect.left() + lado * x, rect.top() + lado * y)
+
+    p.translate(c)
+    p.rotate(40)
+    p.translate(-c)
+    p.setPen(Qt.NoPen)
+    p.setBrush(color)
+    p.drawRoundedRect(QRectF(pt(0.37, 0.17), pt(0.63, 0.26)), lado * 0.03, lado * 0.03)
+    p.drawPolygon(QPolygonF([pt(0.42, 0.26), pt(0.58, 0.26), pt(0.6, 0.46), pt(0.4, 0.46)]))
+    p.drawRoundedRect(QRectF(pt(0.31, 0.45), pt(0.69, 0.53)), lado * 0.035, lado * 0.035)
+    p.setPen(QPen(color, max(1.0, lado * 0.07), Qt.SolidLine, Qt.RoundCap))
+    p.drawLine(pt(0.5, 0.53), pt(0.5, 0.82))
     p.restore()
 
 

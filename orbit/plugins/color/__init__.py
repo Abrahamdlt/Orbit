@@ -1,5 +1,5 @@
 """Plugin Cuentagotas: el atajo abre una lupa, y un clic copia el color de cualquier píxel de la pantalla."""
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QPointF, Qt, Signal
 from PySide6.QtGui import QColor, QGuiApplication, QPainter, QPen
 from PySide6.QtWidgets import QHBoxLayout, QToolTip, QVBoxLayout, QWidget
 
