@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from PySide6.QtCore import (Property, QEasingCurve, QPoint, QPointF, QPropertyAnimation, QRectF, QSize, Qt, QTimer,
                             QVariantAnimation, Signal)
 from PySide6.QtGui import (QBrush, QColor, QFont, QGuiApplication, QIcon, QImage, QLinearGradient, QPainter,
-                           QPainterPath, QPen, QPixmap)
+                           QPainterPath, QPen, QPixmap, QPolygonF)
 from PySide6.QtWidgets import QAbstractButton, QWidget
 
 from . import sistema
@@ -164,6 +164,13 @@ def dibujar_logo(p, rect):
 ICONOS = {
     "radial": ("#FF9F0A", "#FF375F"),
     "fps": ("#30D158", "#30B0C7"),
+    "ocr": ("#0A84FF", "#5E5CE6"),
+    "portapapeles": ("#8E9BB0", "#636B78"),
+    "audio": ("#FF6482", "#FF3B30"),
+    "encima": ("#FFD60A", "#FF9F0A"),
+    "despierto": ("#B48A60", "#F2902A"),
+    "color": ("#BF5AF2", "#FF375F"),
+    "pomodoro": ("#FF453A", "#FF9F0A"),
     "general": ("#A1A1A6", "#6E6E73"),
 }
 
@@ -179,8 +186,20 @@ def dibujar_icono(p, rect, tipo):
     p.fillPath(_squircle(rect), gradiente)
     lado, c = rect.width(), rect.center()
     pluma = QPen(Qt.white, max(1.3, lado * 0.1), Qt.SolidLine, Qt.RoundCap)
+    fina = QPen(Qt.white, max(1.0, lado * 0.07), Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
     p.setPen(pluma)
     p.setBrush(Qt.NoBrush)
+
+    def pt(x, y):  # punto en fracciones del icono
+        return QPointF(rect.left() + lado * x, rect.top() + lado * y)
+
+    def marco(x1, y1, x2, y2):
+        return QRectF(pt(x1, y1), pt(x2, y2))
+
+    def relleno():
+        p.setPen(Qt.NoPen)
+        p.setBrush(Qt.white)
+
     if tipo == "radial":
         r = lado * 0.27
         caja = QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r)
@@ -192,6 +211,65 @@ def dibujar_icono(p, rect, tipo):
         p.drawArc(caja, 200 * 16, -220 * 16)
         centro = caja.center()
         p.drawLine(centro, QPointF(centro.x() + r * 0.55, centro.y() - r * 0.5))
+    elif tipo == "ocr":  # una «T» dentro de las esquinas de un marco
+        p.setPen(fina)
+        for x, y, dx, dy in ((0.22, 0.22, 1, 1), (0.78, 0.22, -1, 1), (0.22, 0.78, 1, -1), (0.78, 0.78, -1, -1)):
+            p.drawPolyline([pt(x + 0.15 * dx, y), pt(x, y), pt(x, y + 0.15 * dy)])
+        p.setPen(pluma)
+        p.drawLine(pt(0.36, 0.37), pt(0.64, 0.37))
+        p.drawLine(pt(0.5, 0.37), pt(0.5, 0.64))
+    elif tipo == "portapapeles":
+        p.setPen(fina)
+        p.drawRoundedRect(marco(0.27, 0.24, 0.73, 0.8), lado * 0.07, lado * 0.07)
+        p.drawLine(pt(0.37, 0.47), pt(0.63, 0.47))
+        p.drawLine(pt(0.37, 0.61), pt(0.56, 0.61))
+        relleno()
+        p.drawRoundedRect(marco(0.38, 0.17, 0.62, 0.3), lado * 0.04, lado * 0.04)
+    elif tipo == "audio":  # audífonos
+        p.setPen(QPen(Qt.white, max(1.0, lado * 0.075), Qt.SolidLine, Qt.FlatCap))
+        p.drawArc(marco(0.25, 0.24, 0.75, 0.74), 0, 180 * 16)
+        relleno()
+        p.drawRoundedRect(marco(0.19, 0.48, 0.34, 0.76), lado * 0.05, lado * 0.05)
+        p.drawRoundedRect(marco(0.66, 0.48, 0.81, 0.76), lado * 0.05, lado * 0.05)
+    elif tipo == "encima":  # chincheta inclinada
+        p.translate(c)
+        p.rotate(40)
+        p.translate(-c)
+        relleno()
+        p.drawRoundedRect(marco(0.37, 0.17, 0.63, 0.26), lado * 0.03, lado * 0.03)
+        p.drawPolygon(QPolygonF([pt(0.42, 0.26), pt(0.58, 0.26), pt(0.6, 0.46), pt(0.4, 0.46)]))
+        p.drawRoundedRect(marco(0.31, 0.45, 0.69, 0.53), lado * 0.035, lado * 0.035)
+        p.setPen(fina)
+        p.drawLine(pt(0.5, 0.53), pt(0.5, 0.82))
+    elif tipo == "despierto":  # taza de café
+        p.setPen(fina)
+        p.drawArc(marco(0.55, 0.47, 0.77, 0.67), -90 * 16, 180 * 16)
+        for x in (0.38, 0.52):
+            vapor = QPainterPath(pt(x, 0.36))
+            vapor.cubicTo(pt(x - 0.05, 0.31), pt(x + 0.05, 0.27), pt(x, 0.21))
+            p.drawPath(vapor)
+        relleno()
+        taza = QPainterPath()
+        taza.addRoundedRect(marco(0.24, 0.42, 0.66, 0.78), lado * 0.11, lado * 0.11)
+        borde = QPainterPath()
+        borde.addRect(marco(0.24, 0.42, 0.66, 0.55))
+        p.drawPath(taza.united(borde))
+    elif tipo == "color":  # cuentagotas inclinado
+        p.translate(c)
+        p.rotate(45)
+        p.translate(-c)
+        relleno()
+        p.drawRoundedRect(marco(0.41, 0.12, 0.59, 0.33), lado * 0.08, lado * 0.08)
+        p.drawRoundedRect(marco(0.34, 0.32, 0.66, 0.39), lado * 0.03, lado * 0.03)
+        p.drawRect(marco(0.455, 0.39, 0.545, 0.72))
+        p.drawPolygon(QPolygonF([pt(0.455, 0.72), pt(0.545, 0.72), pt(0.5, 0.86)]))
+    elif tipo == "pomodoro":  # reloj con el tiempo restante como un arco
+        p.setPen(fina)
+        p.drawEllipse(pt(0.5, 0.55), lado * 0.29, lado * 0.29)
+        p.drawLine(pt(0.5, 0.15), pt(0.5, 0.2))
+        p.drawLine(pt(0.43, 0.15), pt(0.57, 0.15))
+        relleno()
+        p.drawPie(marco(0.28, 0.33, 0.72, 0.77), 90 * 16, -130 * 16)
     else:
         for i, x in enumerate((0.38, 0.62, 0.45)):
             y = rect.top() + lado * (0.32 + i * 0.18)
@@ -381,7 +459,7 @@ class Aviso(QWidget):
                          | Qt.WindowTransparentForInput | Qt.WindowDoesNotAcceptFocus)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.tipo, self.titulo, self.detalle = "general", "", ""
+        self.tipo, self.titulo, self.detalle, self.color = "general", "", "", None
         self._t = 0.0
         self._anim = QVariantAnimation(self, duration=260, easingCurve=QEasingCurve.OutCubic)
         self._anim.valueChanged.connect(self._mover)
@@ -405,8 +483,10 @@ class Aviso(QWidget):
         self._anim.setEndValue(destino)
         self._anim.start()
 
-    def mostrar(self, tipo, titulo, detalle=""):
+    def mostrar(self, tipo, titulo, detalle="", color=None):
+        """color: en lugar del icono se ve una muestra redonda de ese color (lo usa el Cuentagotas)."""
         self.tipo, self.titulo, self.detalle = tipo, titulo, detalle
+        self.color = QColor(color) if color else None
         ancho = max(220, 90 + 9 * max(len(titulo), len(detalle)))
         self.resize(ancho, 64)
         zona = QGuiApplication.primaryScreen().availableGeometry()
@@ -427,7 +507,12 @@ class Aviso(QWidget):
         p.setPen(QPen(QColor(255, 255, 255, 30), 1))
         p.setBrush(QColor(30, 30, 32, 225))
         p.drawRoundedRect(caja, 18, 18)
-        dibujar_icono(p, QRectF(16, 16, 32, 32), self.tipo)
+        if self.color is not None:
+            p.setPen(QPen(QColor(255, 255, 255, 110), 1.5))
+            p.setBrush(self.color)
+            p.drawEllipse(QRectF(17, 17, 30, 30))
+        else:
+            dibujar_icono(p, QRectF(16, 16, 32, 32), self.tipo)
         p.setPen(Qt.white)
         p.setFont(fuente(10.5, QFont.DemiBold))
         p.drawText(QRectF(60, 12, self.width() - 72, 22), Qt.AlignLeft | Qt.AlignVCenter, self.titulo)

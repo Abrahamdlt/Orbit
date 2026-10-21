@@ -9,6 +9,9 @@ class Plugin(QObject):
     icono = "general"         # ver estilo.ICONOS
     requiere_admin = False
     motivo_admin = ""         # por qué necesita permisos (se muestra en el instalador y en ajustes)
+    por_defecto = True        # marcado o no en el instalador
+    texto_atajo = "Activar o desactivar"  # qué hace el atajo (fila del atajo en Ajustes)
+    modulos = ()              # módulos que carga al usarse: los comprueba Orbit.exe --probar-modulos
 
     def __init__(self, app):
         super().__init__()
@@ -29,6 +32,19 @@ class Plugin(QObject):
     def estado(self):
         """Texto corto para el panel de la bandeja."""
         return "Activado" if self.activo else "Desactivado"
+
+    def estado_atajo(self):
+        """Estado de los plugins de acción: su atajo, que es lo que hay que recordar."""
+        return self.cfg["atajo"]["texto"] if self.activo else "Desactivado"
+
+    def al_atajo(self):
+        """Lo que hace su atajo global. Por defecto, activarlo o desactivarlo."""
+        self.app.fijar_activo(self, not self.activo)
+        self.app.aviso.mostrar(self.icono, self.nombre, "Activado" if self.activo else "Desactivado")
+
+    def guardar(self, **valores):
+        self.cfg.update(valores)
+        self.app.config.guardar()
 
     def iniciar(self):
         """Se llama al activarse."""

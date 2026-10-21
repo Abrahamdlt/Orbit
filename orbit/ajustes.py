@@ -126,7 +126,7 @@ class PaginaPlugin(Pagina):
 
         self.boton_atajo = estilo.boton(plugin.cfg["atajo"]["texto"])
         self.boton_atajo.clicked.connect(self._cambiar_atajo)
-        self.fila_atajo = Fila("Activar o desactivar", "", self.boton_atajo)
+        self.fila_atajo = Fila(plugin.texto_atajo, "", self.boton_atajo)
         self.agregar(grupo(self.fila_atajo, titulo="Atajo de teclado"))
         self.extras = QWidget()
         self.extras_diseno = QVBoxLayout(self.extras)

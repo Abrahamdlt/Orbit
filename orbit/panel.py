@@ -3,13 +3,14 @@ import time
 
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from . import VERSION, estilo
 from .estilo import IconoPlugin, Interruptor
 
 SOMBRA = 14  # margen transparente alrededor para la sombra
 RADIO = 16
+ALTO_MAXIMO = 0.8  # fracción del alto de la pantalla: si hay más plugins, la lista se desplaza
 
 
 class FilaPlugin(QWidget):
@@ -112,9 +113,19 @@ class Panel(QWidget):
         seccion.setFont(estilo.fuente(7.5, QFont.DemiBold))
         seccion.setContentsMargins(8, 4, 0, 2)
         diseno.addWidget(seccion)
+        self.lista = QWidget()
+        filas = QVBoxLayout(self.lista)
+        filas.setContentsMargins(0, 0, 0, 0)
+        filas.setSpacing(2)
         self.filas = [FilaPlugin(self, plugin) for plugin in app.plugins]
         for fila in self.filas:
-            diseno.addWidget(fila)
+            filas.addWidget(fila)
+        self.desplazable = QScrollArea()
+        self.desplazable.setWidgetResizable(True)
+        self.desplazable.setFrameShape(QScrollArea.NoFrame)
+        self.desplazable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.desplazable.setWidget(self.lista)
+        diseno.addWidget(self.desplazable)
 
         diseno.addSpacing(6)
         pie = QHBoxLayout()
@@ -147,10 +158,10 @@ class Panel(QWidget):
         if paleta != self.paleta:
             self.paleta = paleta
             self._estilo()
-        self.refrescar()
-        self.adjustSize()
         pantalla = QGuiApplication.screenAt(zona_icono.center()) or QGuiApplication.primaryScreen()
         zona = pantalla.availableGeometry()
+        self.refrescar()
+        self._ajustar_alto(zona)
         x = min(max(zona.left(), zona_icono.center().x() - self.width() // 2), zona.right() - self.width() + SOMBRA - 4)
         y = zona.bottom() - self.height() + SOMBRA - 4 if zona_icono.top() >= zona.bottom() - 4 else zona.top() - SOMBRA + 4
         self.fondo = None
@@ -162,6 +173,15 @@ class Panel(QWidget):
         self.move(x, y)
         estilo.animar_aparicion(self, desplazamiento=12)
         self.activateWindow()
+
+    def _ajustar_alto(self, zona):
+        completo = self.lista.sizeHint().height()
+        self.desplazable.setFixedHeight(completo)
+        self.adjustSize()
+        sobra = self.height() - 2 * SOMBRA - int(zona.height() * ALTO_MAXIMO)
+        if sobra > 0:
+            self.desplazable.setFixedHeight(completo - sobra)
+            self.adjustSize()
 
     def hideEvent(self, evento):
         self.oculto_en = time.monotonic()

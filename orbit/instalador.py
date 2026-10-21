@@ -8,24 +8,14 @@ import threading
 
 from PySide6.QtCore import QEasingCurve, QObject, QParallelAnimationGroup, QPoint, QPropertyAnimation, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
-from PySide6.QtWidgets import (QApplication, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QStackedWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QScrollArea,
+                               QStackedWidget, QVBoxLayout, QWidget)
 
 from . import VERSION, ayudante, estilo, rutas, sistema
 from .config import Config
 from .estilo import Cargando, IconoPlugin, Interruptor
+from .plugins import CLASES
 from .ui import Fila, etiqueta, grupo
-
-# Lo que el instalador necesita saber de cada plugin (sin cargar el plugin entero)
-PLUGINS = [
-    {"id": "radial", "nombre": "Rueda radial", "icono": "radial",
-     "descripcion": "Arrastra un archivo o carpeta y pulsa Tab: comprime, convierte o extrae desde una rueda.",
-     "admin": ""},
-    {"id": "fps", "nombre": "Medidor FPS", "icono": "fps",
-     "descripcion": "FPS, CPU, GPU y RAM en una pastilla discreta encima de cualquier ventana o juego.",
-     "admin": "Windows exige permiso de administrador para contar los FPS de otros programas y leer la "
-              "temperatura de la CPU. Se pide una vez, al instalar; el ayudante solo lee datos."},
-]
 
 
 class Pagina(QWidget):
@@ -73,6 +63,7 @@ class Instalador(QWidget):
         self.paleta = estilo.paleta()
         self.anterior = Config() if os.path.exists(rutas.CONFIG) else None
         self.actualizando = os.path.exists(rutas.EXE_INSTALADO)
+        estilo.BAJO_CONSUMO = bool(self.anterior and self.anterior["bajo_consumo"])
         self.setWindowTitle("Instalar Orbit")
         self.setWindowIcon(estilo.icono_orbit())
         self.setFixedSize(620, 680)
@@ -138,28 +129,28 @@ class Instalador(QWidget):
         pagina.diseno.addWidget(etiqueta("Puedes añadir o quitar plugins más tarde desde Orbit.", "secundario"))
         self.elegidos = {}
         filas = []
-        for info in PLUGINS:
+        for clase in CLASES:
             interruptor = Interruptor()
-            interruptor.fijar(self.anterior.plugin(info["id"]).get("instalado", False) if self.anterior else True)
+            interruptor.fijar(self._marcado(clase))
             interruptor.toggled.connect(self._validar)
-            self.elegidos[info["id"]] = interruptor
+            self.elegidos[clase.id] = interruptor
             fila = QWidget()
             h = QHBoxLayout(fila)
             h.setContentsMargins(14, 12, 14, 12)
             h.setSpacing(12)
-            h.addWidget(IconoPlugin(info["icono"], 36), 0, Qt.AlignTop)
+            h.addWidget(IconoPlugin(clase.icono, 36), 0, Qt.AlignTop)
             textos = QVBoxLayout()
             textos.setSpacing(2)
-            nombre = QLabel(info["nombre"])
+            nombre = QLabel(clase.nombre)
             nombre.setFont(estilo.fuente(10.5, QFont.DemiBold))
             textos.addWidget(nombre)
-            textos.addWidget(etiqueta(info["descripcion"], "secundario", envolver=True))
-            if info["admin"]:
+            textos.addWidget(etiqueta(clase.descripcion, "secundario", envolver=True))
+            if clase.requiere_admin:
                 aviso = etiqueta("Requiere permiso de administrador", envolver=True)
                 aviso.setStyleSheet(f"color: {self.paleta.naranja}; font-weight: 600;")
                 textos.addSpacing(4)
                 textos.addWidget(aviso)
-                textos.addWidget(etiqueta(info["admin"], "secundario", envolver=True))
+                textos.addWidget(etiqueta(clase.motivo_admin, "secundario", envolver=True))
             h.addLayout(textos, 1)
             h.addWidget(interruptor, 0, Qt.AlignTop)
             filas.append(fila)
@@ -172,11 +163,23 @@ class Instalador(QWidget):
         if sistema.pawnio_instalado():
             fila_pawnio = Fila("Temperatura de CPU (Medidor FPS)", "El driver PawnIO ya está instalado.")
         filas.append(fila_pawnio)
-        pagina.diseno.addWidget(grupo(*filas))
         self.con_windows = Interruptor()
         self.con_windows.fijar(self.anterior["iniciar_con_windows"] if self.anterior else True)
-        pagina.diseno.addWidget(grupo(Fila("Iniciar con Windows", "Orbit se abre sola al encender el equipo.",
-                                           self.con_windows)))
+        # La lista no cabe en la ventana: va en un área con desplazamiento, con los botones siempre a la vista
+        contenido = QWidget()
+        lista = QVBoxLayout(contenido)
+        lista.setContentsMargins(0, 0, 10, 0)
+        lista.setSpacing(14)
+        lista.addWidget(grupo(*filas))
+        lista.addWidget(grupo(Fila("Iniciar con Windows", "Orbit se abre sola al encender el equipo.",
+                                   self.con_windows)))
+        lista.addStretch()
+        desplazable = QScrollArea()
+        desplazable.setWidgetResizable(True)
+        desplazable.setFrameShape(QScrollArea.NoFrame)
+        desplazable.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        desplazable.setWidget(contenido)
+        pagina.diseno.addWidget(desplazable, 1)
         atras = estilo.boton("Atrás")
         self.boton_instalar = estilo.boton("Actualizar" if self.actualizando else "Instalar", "primario")
         atras.clicked.connect(lambda: self._ir(1))
@@ -212,6 +215,8 @@ class Instalador(QWidget):
             return
         direccion = 1 if indice > actual else -1
         self.paginas.setCurrentIndex(indice)
+        if estilo.BAJO_CONSUMO:
+            return
         pagina = self.paginas.currentWidget()
         efecto = QGraphicsOpacityEffect(pagina)
         pagina.setGraphicsEffect(efecto)
@@ -222,6 +227,12 @@ class Instalador(QWidget):
                                                    endValue=QPoint(0, 0), easingCurve=estilo.resorte(0.6)))
         grupo_anim.finished.connect(lambda: pagina.setGraphicsEffect(None))
         grupo_anim.start(QParallelAnimationGroup.DeleteWhenStopped)
+
+    def _marcado(self, clase):
+        """Al actualizar se respeta lo que ya tenías; los plugins nuevos vienen marcados según su por_defecto."""
+        if self.anterior and clase.id in self.anterior.plugins_guardados:
+            return self.anterior.plugin(clase.id).get("instalado", False)
+        return clase.por_defecto
 
     def _validar(self):
         self.boton_instalar.setEnabled(any(i.isChecked() for i in self.elegidos.values()))
@@ -256,20 +267,20 @@ class Instalador(QWidget):
             config["iniciar_con_windows"] = con_windows
             if tecla_antigua:
                 config.plugin("radial").update(tecla_antigua)
-            for info in PLUGINS:
-                cfg = config.plugin(info["id"])
-                elegido, antes = elegidos[info["id"]], cfg.get("instalado", False)
-                if info["admin"] and elegido:
-                    self.hilo.paso.emit(f"{info['nombre']}: Windows te pedirá permiso…")
+            for clase in CLASES:
+                cfg = config.plugin(clase.id)
+                elegido, antes = elegidos[clase.id], cfg.get("instalado", False)
+                if clase.requiere_admin and elegido:
+                    self.hilo.paso.emit(f"{clase.nombre}: Windows te pedirá permiso…")
                     elegido = ayudante.registrado() and (not pawnio or sistema.pawnio_instalado()) \
                         or ayudante.instalar(pawnio)
-                    resumen.append((info["icono"], info["nombre"], "Listo" if elegido else
+                    resumen.append((clase.icono, clase.nombre, "Listo" if elegido else
                                     "Sin permiso: no se instaló. Puedes añadirlo después desde Orbit."))
-                elif info["admin"] and antes and not elegido:
+                elif clase.requiere_admin and antes and not elegido:
                     ayudante.quitar()
-                    resumen.append((info["icono"], info["nombre"], "Quitado"))
+                    resumen.append((clase.icono, clase.nombre, "Quitado"))
                 elif elegido:
-                    resumen.append((info["icono"], info["nombre"], "Listo"))
+                    resumen.append((clase.icono, clase.nombre, "Listo"))
                 cfg["instalado"] = elegido
                 cfg["activo"] = elegido and (cfg.get("activo", True) or not antes)
             config.guardar()

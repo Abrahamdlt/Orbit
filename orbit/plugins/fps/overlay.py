@@ -1,55 +1,23 @@
-"""El medidor flotante: una pastilla oscura y discreta encima de todas las ventanas."""
-from PySide6.QtCore import QRectF, Qt, QTimer, QVariantAnimation
-from PySide6.QtGui import QColor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPen
-from PySide6.QtWidgets import QWidget
+"""El medidor flotante: una pastilla con FPS, CPU, GPU y RAM encima de todas las ventanas."""
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import QColor, QFont, QFontMetricsF, QPen
 
-from ... import estilo, sistema
-
-MARGEN = 16
-ALTO = 34
+from ... import estilo
+from ...pastilla import ALTO, Pastilla
 
 
-class Medidor(QWidget):
+class Medidor(Pastilla):
     def __init__(self):
-        super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
-                         | Qt.WindowTransparentForInput | Qt.WindowDoesNotAcceptFocus)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        super().__init__()
         self.lectura = {}
         self.metricas = {"fps": True, "cpu": True, "gpu": True, "ram": True}
-        self.posicion = "arriba-izquierda"
         self.fuente_numero = estilo.fuente(13, QFont.DemiBold, titulo=True)
         self.fuente_valor = estilo.fuente(10, QFont.DemiBold)
         self.fuente_etiqueta = estilo.fuente(7.5, QFont.DemiBold)
-        self._opacidad = QVariantAnimation(self, duration=220, easingCurve=estilo.resorte(0))
-        self._opacidad.valueChanged.connect(self.setWindowOpacity)
-        self._opacidad.finished.connect(lambda: self.windowOpacity() < 0.01 and self.hide())
-        # Algunos juegos se ponen encima al cambiar de ventana: lo volvemos a subir de vez en cuando
-        self._encima = QTimer(self, interval=2000)
-        self._encima.timeout.connect(lambda: sistema.siempre_encima(int(self.winId())))
-
-    def aparecer(self):
-        self.setWindowOpacity(0.0)
-        self._colocar()
-        self.show()
-        sistema.siempre_encima(int(self.winId()))
-        self._encima.start()
-        self._ir_a(1.0)
-
-    def desaparecer(self):
-        self._encima.stop()
-        self._ir_a(0.0)
-
-    def _ir_a(self, valor):
-        self._opacidad.stop()
-        self._opacidad.setStartValue(self.windowOpacity())
-        self._opacidad.setEndValue(valor)
-        self._opacidad.start()
 
     def actualizar(self, lectura):
         self.lectura = lectura
-        self._colocar()
-        self.update()
+        self.refrescar()
 
     # --- contenido: [(etiqueta, valor principal, valor secundario)]
     def _segmentos(self):
@@ -87,29 +55,11 @@ class Medidor(QWidget):
             anchos.append(ancho)
         return anchos
 
-    def _colocar(self):
+    def ancho_contenido(self):
         anchos = self._medidas()
-        ancho = int(sum(anchos) + 26 * max(0, len(anchos) - 1) + 28) if anchos else 80
-        self.resize(ancho, ALTO + 8)
-        pantalla = QGuiApplication.primaryScreen()
-        zona = pantalla.geometry()
-        x = zona.left() + MARGEN if "izquierda" in self.posicion else zona.right() - ancho - MARGEN
-        y = zona.top() + MARGEN if "arriba" in self.posicion else \
-            pantalla.availableGeometry().bottom() - ALTO - 8 - MARGEN
-        self.move(x, y)
+        return sum(anchos) + 26 * max(0, len(anchos) - 1) + 28 if anchos else 80
 
-    def paintEvent(self, _):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setRenderHint(QPainter.TextAntialiasing)
-        caja = QRectF(1, 1, self.width() - 2, ALTO)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(0, 0, 0, 60))
-        p.drawRoundedRect(caja.translated(0, 2), ALTO / 2, ALTO / 2)
-        p.setPen(QPen(QColor(255, 255, 255, 32), 1))
-        p.setBrush(QColor(22, 22, 24, 205))
-        p.drawRoundedRect(caja, ALTO / 2, ALTO / 2)
-
+    def pintar(self, p, caja):
         blanco, gris = QColor(255, 255, 255), QColor(255, 255, 255, 140)
         m_num, m_val, m_eti = (QFontMetricsF(f) for f in (self.fuente_numero, self.fuente_valor, self.fuente_etiqueta))
         x, medio = 15.0, caja.center().y()

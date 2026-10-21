@@ -14,8 +14,7 @@ from .atajos import Atajos
 from .config import Config
 from .dialogos import confirmar, informar
 from .panel import Panel
-from .plugins.fps import PluginFPS
-from .plugins.radial import PluginRadial
+from .plugins import CLASES
 
 
 class Orbit(QObject):
@@ -34,7 +33,7 @@ class Orbit(QObject):
         self.atajo_ok = {}
         self.ventana_ajustes = None
 
-        self.plugins = [PluginRadial(self), PluginFPS(self)]
+        self.plugins = [clase(self) for clase in CLASES]
         for plugin in self.plugins:
             if plugin.instalado:
                 self.atajo_ok[plugin.id] = self.atajos.registrar(plugin.id, plugin.cfg["atajo"])
@@ -105,8 +104,7 @@ class Orbit(QObject):
     def _atajo(self, clave):
         plugin = self.plugin(clave)
         if plugin.instalado:
-            self.fijar_activo(plugin, not plugin.activo)
-            self.aviso.mostrar(plugin.icono, plugin.nombre, "Activado" if plugin.activo else "Desactivado")
+            self._con_cuidado(plugin.al_atajo)
 
     def _refrescar(self):
         self.panel.refrescar()
@@ -192,10 +190,28 @@ class Orbit(QObject):
         return self.qapp.exec()
 
 
+def probar_modulos():
+    """Orbit.exe --probar-modulos: importa todo lo que los plugins cargan al usarse y sale con 0 si está todo.
+    Sirve para comprobar que el .exe incluye winrt, comtypes y compañía sin abrir la app."""
+    import importlib
+    faltan = []
+    for clase in CLASES:
+        for modulo in clase.modulos:
+            try:
+                importlib.import_module(modulo)
+            except Exception:
+                logging.exception("Falta el módulo %s (%s)", modulo, clase.nombre)
+                faltan.append(modulo)
+    logging.info("Prueba de módulos: %s", f"faltan {faltan}" if faltan else "todo bien")
+    return 1 if faltan else 0
+
+
 def main():
     os.makedirs(rutas.DATOS, exist_ok=True)
     logging.basicConfig(filename=rutas.LOG, level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     argumentos = sys.argv[1:]
+    if "--probar-modulos" in argumentos:
+        return probar_modulos()
     if "--sensores" in argumentos:
         from .plugins.fps import medicion
         return medicion.correr()

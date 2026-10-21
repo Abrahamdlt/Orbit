@@ -37,10 +37,13 @@ def _mezclar(base, guardado):
 class Config:
     def __init__(self):
         self.datos = copy.deepcopy(DEFECTO)
+        self.plugins_guardados = set()  # plugins que ya estaban en el archivo (el resto es nuevo en esta versión)
         try:
             with open(rutas.CONFIG, encoding="utf-8") as f:
-                _mezclar(self.datos, json.load(f))
-        except (OSError, ValueError):
+                guardado = json.load(f)
+            self.plugins_guardados = set(guardado.get("plugins", {}))
+            _mezclar(self.datos, guardado)
+        except (OSError, ValueError, AttributeError):
             pass
 
     def __getitem__(self, clave):

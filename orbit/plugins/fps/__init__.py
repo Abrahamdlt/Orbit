@@ -1,12 +1,11 @@
 """Plugin Medidor FPS: FPS, CPU, GPU y RAM en una pastilla flotante sobre cualquier ventana."""
 from ... import ayudante, estilo, sistema
 from ...estilo import Interruptor, Segmentado
+from ...pastilla import NOMBRES_POSICIONES, POSICIONES
 from ...ui import Fila, grupo
 from ..base import Plugin
 from .overlay import Medidor
 from .sensores import Lector
-
-POSICIONES = ["arriba-izquierda", "arriba-derecha", "abajo-izquierda", "abajo-derecha"]
 
 
 class PluginFPS(Plugin):
@@ -93,7 +92,7 @@ class PluginFPS(Plugin):
                                               "tirones. El número varía más. Con el modo bajo consumo, solo el FPS "
                                               "va rápido.", latencia)
 
-        posicion = Segmentado(["Arriba izq.", "Arriba der.", "Abajo izq.", "Abajo der."])
+        posicion = Segmentado(NOMBRES_POSICIONES)
         posicion.fijar(POSICIONES.index(self.cfg["posicion"]))
         posicion.cambiado.connect(self._posicion)
 
