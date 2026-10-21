@@ -5,6 +5,7 @@ Para añadir uno, crea su paquete con una clase que herede de base.Plugin y ponl
 from .despierto import PluginDespierto
 from .encima import PluginEncima
 from .fps import PluginFPS
+from .pomodoro import PluginPomodoro
 from .radial import PluginRadial
 
-CLASES = [PluginRadial, PluginFPS, PluginDespierto, PluginEncima]
+CLASES = [PluginRadial, PluginFPS, PluginDespierto, PluginEncima, PluginPomodoro]
