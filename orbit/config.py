@@ -25,6 +25,7 @@ DEFECTO = {
         "encima": {"instalado": False, "activo": True, "atajo": atajo("P"), "borde": True},
         "pomodoro": {"instalado": False, "activo": True, "atajo": atajo("O"), "enfoque": 25, "corto": 5, "largo": 15,
                      "posicion": "abajo-derecha", "sonido": True},
+        "color": {"instalado": False, "activo": True, "atajo": atajo("C"), "formato": "hex", "historial": []},
     },
 }
 

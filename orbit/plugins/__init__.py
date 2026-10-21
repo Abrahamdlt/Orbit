@@ -2,10 +2,11 @@
 
 Para añadir uno, crea su paquete con una clase que herede de base.Plugin y ponla aquí.
 """
+from .color import PluginColor
 from .despierto import PluginDespierto
 from .encima import PluginEncima
 from .fps import PluginFPS
 from .pomodoro import PluginPomodoro
 from .radial import PluginRadial
 
-CLASES = [PluginRadial, PluginFPS, PluginDespierto, PluginEncima, PluginPomodoro]
+CLASES = [PluginRadial, PluginFPS, PluginDespierto, PluginEncima, PluginPomodoro, PluginColor]
