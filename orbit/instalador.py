@@ -286,7 +286,7 @@ class Instalador(QWidget):
                 elif elegido:
                     resumen.append((clase.icono, clase.nombre, "Listo"))
                 cfg["instalado"] = elegido
-                cfg["activo"] = elegido and (cfg.get("activo", True) or not antes)
+                cfg["activo"] = elegido and (cfg.get("activo", True) if antes else clase.activo_por_defecto)
             config.guardar()
             self.hilo.listo.emit(resumen)
         except Exception as error:

@@ -23,6 +23,7 @@ class PluginPomodoro(Plugin):
                    "tiempo que queda y te avisa al cambiar de fase.")
     icono = "pomodoro"
     texto_atajo = "Iniciar o pausar"
+    activo_por_defecto = False  # la pastilla aparece la primera vez que pulsas el atajo, no nada más instalar
 
     def __init__(self, app):
         super().__init__(app)

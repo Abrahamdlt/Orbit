@@ -10,6 +10,7 @@ class Plugin(QObject):
     requiere_admin = False
     motivo_admin = ""         # por qué necesita permisos (se muestra en el instalador y en ajustes)
     por_defecto = True        # marcado o no en el instalador
+    activo_por_defecto = True  # si queda encendido al instalarlo con el instalador
     texto_atajo = "Activar o desactivar"  # qué hace el atajo (fila del atajo en Ajustes)
     modulos = ()              # módulos que carga al usarse: los comprueba Orbit.exe --probar-modulos
 
