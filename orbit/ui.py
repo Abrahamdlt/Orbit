@@ -22,12 +22,14 @@ class Fila(QWidget):
         diseno.setSpacing(12)
         textos = QVBoxLayout()
         textos.setSpacing(1)
+        # Primero se engancha a la fila: un widget sin padre que se hace visible
+        # aparece un instante como ventana suelta
+        diseno.addLayout(textos, 1)
         self.titulo = etiqueta(titulo)
         textos.addWidget(self.titulo)
         self.detalle = etiqueta(detalle, "secundario", envolver=True)
-        self.detalle.setVisible(bool(detalle))
         textos.addWidget(self.detalle)
-        diseno.addLayout(textos, 1)
+        self.detalle.setVisible(bool(detalle))
         if control is not None:
             diseno.addWidget(control, 0, Qt.AlignVCenter)
 
