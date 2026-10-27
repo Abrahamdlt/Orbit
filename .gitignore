@@ -10,3 +10,6 @@ vendor/
 
 # Ejecutables (se publican en Releases, no en el código)
 *.exe
+
+# Video de demostración: se publica en Releases (demo/video_demo.py lo genera)
+demo/*.mp4

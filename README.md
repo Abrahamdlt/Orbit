@@ -5,6 +5,13 @@ Pequeñas herramientas (plugins) que viven junto al reloj de Windows, con un dis
 Haz clic en el icono de Orbit en la bandeja del sistema y verás tus plugins: cada uno se enciende con un
 interruptor, tiene su propio atajo de teclado y sus ajustes en una barra lateral.
 
+<p align="center">
+  <img src="docs/demo.webp" width="800" alt="Orbit en acción: el panel de la bandeja, la rueda radial, el Medidor FPS, el texto de pantalla, el historial del portapapeles, el cuentagotas y los ajustes">
+</p>
+<p align="center">
+  <a href="https://github.com/Abrahamdlt/Orbit/releases/download/v1.2.2/Orbit-demo.mp4"><b>Ver el video completo en alta calidad</b></a> (MP4, 46 s, 1080p)
+</p>
+
 ## Plugins
 
 | Plugin | Qué hace | Atajo por defecto |
@@ -74,6 +81,15 @@ pythonw orbit.pyw          # abre Orbit desde el código
 pip install pyinstaller
 python construir.py        # crea dist/Orbit.exe (descarga las herramientas de terceros a vendor/)
 dist\Orbit.exe --probar-modulos   # sale con 0 si el .exe trae todo lo que cargan los plugins
+pip install imageio-ffmpeg
+python demo/video_demo.py  # vuelve a generar el video de demostración (demo/Orbit-demo.mp4)
+```
+
+El video se hace con las piezas reales de Orbit (panel, rueda, medidor, avisos, ajustes...) animadas cuadro a
+cuadro sobre un escritorio dibujado. La animación del README (`docs/demo.webp`) sale de ese MP4:
+
+```bash
+ffmpeg -i demo/Orbit-demo.mp4 -vf "fps=12,scale=800:-1:flags=lanczos" -c:v libwebp_anim -quality 85 -loop 0 -an docs/demo.webp
 ```
 
 Estructura:
